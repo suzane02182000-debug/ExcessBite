@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}View Listing - EXCESSBITE{% endblock %}
+
+{% block content %}
+<section class="container" style="margin: 2rem 0;">
+    <a href="{{ url_for('donor.dashboard') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <div class="grid grid-2">
+        <!-- Listing Details -->
+        <div class="card">
+            <h2>{{ donation.food_type }}</h2>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Quantity:</strong> {{ donation.quantity }} {{ donation.unit }}
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Description:</strong> {{ donation.description }}
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Status:</strong> 
+                <span class="status-badge status-{{ donation.status }}">
+                    {{ donation.status|upper }}
+                </span>
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Expiry Time:</strong> {{ donation.expiry_time.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Pickup Date:</strong> {{ donation.pickup_date }}
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Pickup Address:</strong> {{ donation.pickup_address }}
+            </div>
+            
+            {% if donation.status == 'delivered' %}
+                <!-- Feedback Section -->
+                <div class="feedback-section" style="margin-top: 1.5rem;">
+                    <h3><i class="fas fa-star"></i> Give Feedback</h3>
+
+                    {% if delivery %}
+                        <!-- Donor → NGO -->
+                        <div class="feedback-card" id="fb-donor-ngo">
+                            <h4>Rate NGO: {{ delivery.ngo_recipient.organization_name }}</h4>
+                            <p class="feedback-hint">Rate how quickly the NGO responded and handled the food donation</p>
+                            {% if given_feedback.get('donor_to_ngo') %}
+                                <div class="feedback-submitted">
+                                    <i class="fas fa-check-circle"></i> Submitted
+                                    <span class="stars-display">{{ '★' * given_feedback['donor_to_ngo'].rating }}{{ '☆' * (5 - given_feedback['donor_to_ngo'].rating) }}</span>
+                                </div>
+                            {% else %}
+                                <div class="star-rating">
+                                    {% for i in range(1, 6) %}
+                                        <button type="button" class="star-btn" data-value="{{ i }}">☆</button>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" class="feedback-rating-input" value="0">
+                                <textarea class="feedback-comment" placeholder="Share your experience with the NGO..."></textarea>
+                                <button onclick="FeedbackUtils.submitDonorFeedback({{ donation.id }}, 'donor_to_ngo', 'fb-donor-ngo')" class="btn btn-primary btn-sm">Submit</button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Donor → Volunteer -->
+                        {% if delivery.logistics_id %}
+                            <div class="feedback-card" id="fb-donor-vol">
+                                <h4>Rate Volunteer: {{ delivery.logistics.full_name }}</h4>
+                                <p class="feedback-hint">Rate the pickup experience and professionalism</p>
+                                {% if given_feedback.get('donor_to_volunteer') %}
+                                    <div class="feedback-submitted">
+                                        <i class="fas fa-check-circle"></i> Submitted
+                                        <span class="stars-display">{{ '★' * given_feedback['donor_to_volunteer'].rating }}{{ '☆' * (5 - given_feedback['donor_to_volunteer'].rating) }}</span>
+                                    </div>
+                                {% else %}
+                                    <div class="star-rating">
+                                        {% for i in range(1, 6) %}
+                                            <button type="button" class="star-btn" data-value="{{ i }}">☆</button>
+                                        {% endfor %}
+                                    </div>
+                                    <input type="hidden" class="feedback-rating-input" value="0">
+                                    <textarea class="feedback-comment" placeholder="Share your experience with the volunteer..."></textarea>
+                                    <button onclick="FeedbackUtils.submitDonorFeedback({{ donation.id }}, 'donor_to_volunteer', 'fb-donor-vol')" class="btn btn-primary btn-sm">Submit</button>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Map & Requests -->
+        <div>
+            <div class="card" style="margin-bottom: 1rem;">
+                <h3>Pickup Location</h3>
+                <div id="map" data-latitude="{{ donation.latitude or '' }}" data-longitude="{{ donation.longitude or '' }}" style="height: 400px; margin-top: 1rem; border-radius: 4px;"></div>
+                <div style="margin-top: 1rem; padding: 1rem; background-color: #e8f4f8; border-radius: 4px;">
+                    <strong>📍 Address:</strong>
+                    <p>{{ donation.pickup_address }}</p>
+                    <a href="https://www.google.com/maps/search/{{ donation.pickup_address|urlencode }}" target="_blank" class="btn btn-small" style="margin-top: 0.5rem;">📍 View on Google Maps</a>
+                </div>
+            </div>
+            
+            {% if requests %}
+                <div class="card">
+                    <h3>Requests ({{ requests|length }})</h3>
+                    {% for req in requests %}
+                        <div style="padding: 1rem; border-bottom: 1px solid #eee;">
+                            <strong>{{ req.ngo.organization_name }}</strong>
+                            <p>Quantity: {{ req.requested_quantity }} packets</p>
+                            <p>Status: <strong>{{ req.status|upper }}</strong></p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% if delivery %}
+                <div class="card">
+                    <h3>Delivery</h3>
+                    <p>Status: <strong>{{ delivery.status|upper }}</strong></p>
+                    <p>NGO: {{ delivery.ngo_recipient.organization_name }}</p>
+                    {% if delivery.logistics %}
+                        <p>Logistics: {{ delivery.logistics.full_name }}</p>
+                    {% endif %}
+                    {% if delivery.pickup_time %}
+                        <p>Picked up: {{ delivery.pickup_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                    {% endif %}
+                    {% if delivery.delivery_time %}
+                        <p>Delivered: {{ delivery.delivery_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<script>
+    function initializeDonationMap() {
+        const mapElement = document.getElementById('map');
+        if (!mapElement) {
+            console.error('Map element not found');
+            return;
+        }
+        
+        // Check if Leaflet is loaded
+        if (typeof L === 'undefined') {
+            console.warn('Leaflet not loaded yet, retrying...');
+            setTimeout(initializeDonationMap, 500);
+            return;
+        }
+        
+        try {
+            // Get coordinates from data attributes
+            const lat = parseFloat(mapElement.getAttribute('data-latitude'));
+            const lng = parseFloat(mapElement.getAttribute('data-longitude'));
+            
+            console.log('Coordinates:', lat, lng);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error('Invalid coordinates:', lat, lng);
+                mapElement.innerHTML = '<p style="padding: 1rem; color: #666; text-align: center;">Location coordinates not available. Please use the address card or Google Maps link below.</p>';
+                return;
+            }
+            
+            console.log('Initializing map with coordinates:', lat, lng);
+            const map = initMap('map', {
+                zoom: 15,
+                center: [lat, lng]
+            });
+            
+            if (map) {
+                console.log('Map initialized, adding marker');
+                const address = {{ donation.pickup_address|tojson|safe }};
+                addMarker(map, lat, lng, address);
+                console.log('Map ready with marker');
+            } else {
+                console.error('Map initialization returned null');
+                mapElement.innerHTML = '<p style="padding: 1rem; color: #666; text-align: center;">Unable to load map. Please use the address card or Google Maps link below.</p>';
+            }
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            mapElement.innerHTML = '<p style="padding: 1rem; color: #666; text-align: center;">Error: ' + error.message + '</p>';
+        }
+    }
+    
+    // Start initialization after a short delay to ensure DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializeDonationMap, 100);
+        });
+    } else {
+        setTimeout(initializeDonationMap, 100);
+    }
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    FeedbackUtils.initStarRating('fb-donor-ngo');
+    FeedbackUtils.initStarRating('fb-donor-vol');
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - EXCESSBITE{% endblock %}
+
+{% block content %}
+<section class="container" style="margin: 2rem 0;">
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div style="font-weight: bold; margin-bottom: 1rem;"><i class="fas fa-shield-alt" style="color: var(--primary);"></i> Admin Menu</div>
+            <div class="sidebar-item"><a href="{{ url_for('admin.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></div>
+            <div class="sidebar-item active"><a href=""><i class="fas fa-users"></i> Manage Users <span class="badge" id="badge-manage-users"></span></a></div>
+            <div class="sidebar-item"><a href="{{ url_for('admin.manage_donations') }}"><i class="fas fa-gift"></i> Manage Donations <span class="badge" id="badge-manage-donations"></span></a></div>
+            <div class="sidebar-item"><a href="{{ url_for('admin.manage_requests') }}"><i class="fas fa-clipboard-list"></i> Manage Requests <span class="badge" id="badge-manage-requests"></span></a></div>
+            <div class="sidebar-item"><a href="{{ url_for('admin.manage_deliveries') }}"><i class="fas fa-truck"></i> Manage Deliveries <span class="badge" id="badge-manage-deliveries"></span></a></div>
+        </aside>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <h1><i class="fas fa-users" style="color: var(--primary); margin-right: 0.5rem;"></i> Manage Users</h1>
+            
+            <!-- Filter -->
+            <div style="margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.manage_users') }}" class="btn btn-sm {% if not role_filter %}btn-primary{% else %}btn-secondary{% endif %}">All</a>
+                {% for role in roles %}
+                    {% if role != 'admin' %}
+                        <a href="{{ url_for('admin.manage_users', role=role) }}" class="btn btn-sm {% if role_filter == role %}btn-primary{% else %}btn-secondary{% endif %}">{{ role|upper }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Verified</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users.items %}
+                        <tr>
+                            <td>{{ user.full_name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.role|upper }}</td>
+                            <td>{{ '✓' if user.is_verified else '✗' }}</td>
+                            <td>{{ '✓' if user.is_active else '✗' }}</td>
+                            <td>
+                                {% if not user.is_verified %}
+                                    <button onclick="AdminUtils.approveUser({{ user.id }})" class="btn btn-sm btn-primary">Approve</button>
+                                {% endif %}
+                                {% if user.is_active and user.role != 'admin' %}
+                                    <button onclick="if(confirm('Deactivate this user?')) AdminUtils.deactivateUser({{ user.id }}, 'Admin action')" class="btn btn-sm btn-danger">Deactivate</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Pagination -->
+            <div class="pagination">
+                {% if users.has_prev %}
+                    <a href="{{ url_for('admin.manage_users', page=users.prev_num, role=role_filter) }}">Previous</a>
+                {% endif %}
+                
+                {% for page_num in users.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == users.page %}
+                            <span class="active">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('admin.manage_users', page=page_num, role=role_filter) }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if users.has_next %}
+                    <a href="{{ url_for('admin.manage_users', page=users.next_num, role=role_filter) }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Register - EXCESSBITE{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width: 720px; margin: 3rem auto;" data-aos="fade-up">
+    <a href="{{ url_for('main.home') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    <div class="card" style="padding: 2.5rem;">
+        <div style="text-align: center; margin-bottom: 0.5rem;">
+            <div style="width: 60px; height: 60px; background: var(--gradient-primary); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; color: white; box-shadow: 0 8px 25px rgba(16,185,129,0.25);">
+                <i class="fas fa-user-plus"></i>
+            </div>
+        </div>
+        <h1 style="text-align: center; font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 0.5rem;">Join EXCESSBITE</h1>
+        <p class="auth-subtitle">Create your account and start making a difference</p>
+        
+        {% if errors %}
+            <div class="form-error">
+                <strong>Please fix the following errors:</strong>
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        
+        <form method="POST">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+            
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label for="role">I am a...</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select your role</option>
+                        {% for role in roles %}
+                            <option value="{{ role }}">
+                                {% if role == 'donor' %}Restaurant/Hotel/Donor
+                                {% elif role == 'ngo' %}NGO
+                                {% elif role == 'logistics' %}Logistics Volunteer
+                                {% elif role == 'admin' %}Admin
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input type="text" id="city" name="city">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="address">Address</label>
+                <textarea id="address" name="address"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Location <button type="button" id="detect-location-btn" class="btn btn-sm btn-primary" style="margin-left: 0.5rem; vertical-align: middle;"><i class="fas fa-crosshairs"></i> Auto-Detect</button></label>
+                <div id="location-map" style="height: 250px; margin-top: 0.75rem; border: 2px solid var(--border); border-radius: var(--radius);"></div>
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+                <small style="color: var(--text-muted);">Click "Auto-Detect" or click on the map to set your location</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="organization_name">Organization Name (for NGO/Logistics)</label>
+                <input type="text" id="organization_name" name="organization_name">
+            </div>
+            
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                    <small>At least 8 characters, 1 uppercase, 1 lowercase, 1 digit, 1 special character</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password_confirm">Confirm Password</label>
+                    <input type="password" id="password_confirm" name="password_confirm" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary); font-size: 0.92rem;">
+            Already have an account? <a href="{{ url_for('auth.login') }}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Login here</a>
+        </p>
+    </div>
+</section>
+
+<script>
+    let regMap = null;
+    let regMarker = null;
+
+    function initializeRegistrationMap() {
+        if (typeof L === 'undefined' || typeof initMap === 'undefined') {
+            setTimeout(initializeRegistrationMap, 300);
+            return;
+        }
+
+        const mapEl = document.getElementById('location-map');
+        if (!mapEl) return;
+
+        regMap = L.map('location-map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(regMap);
+        setTimeout(() => regMap.invalidateSize(), 200);
+
+        regMap.on('click', function(e) {
+            setMapLocation(e.latlng.lat, e.latlng.lng, true);
+        });
+
+        // Auto-geocode on address/city blur
+        var addressInput = document.getElementById('address');
+        var cityInput = document.getElementById('city');
+        function autoGeocode() {
+            var address = addressInput.value.trim();
+            var city = cityInput.value.trim();
+            if (address) {
+                geocodeWithNominatim(address, city).then(function(coords) {
+                    if (coords) setMapLocation(coords.lat, coords.lng, false);
+                });
+            }
+        }
+        addressInput.addEventListener('blur', autoGeocode);
+        cityInput.addEventListener('blur', autoGeocode);
+
+        // Auto-detect button
+        document.getElementById('detect-location-btn').addEventListener('click', function() {
+            detectUserLocation();
+        });
+
+        // Auto-detect on load
+        detectUserLocation();
+    }
+
+    function setMapLocation(lat, lng, doReverse) {
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+
+        if (regMarker) regMap.removeLayer(regMarker);
+        regMarker = L.marker([lat, lng]).addTo(regMap).bindPopup('Your Location').openPopup();
+        regMap.setView([lat, lng], 15);
+
+        if (doReverse) {
+            reverseGeocodeNominatim(lat, lng);
+        }
+    }
+
+    /* ----------  Fetch with timeout (cross-browser safe) ---------- */
+    function fetchWithTimeout(url, ms) {
+        return new Promise(function(resolve, reject) {
+            var timer = setTimeout(function() { reject(new Error('timeout')); }, ms);
+            fetch(url).then(function(r) {
+                clearTimeout(timer);
+                resolve(r);
+            }).catch(function(e) {
+                clearTimeout(timer);
+                reject(e);
+            });
+        });
+    }
+
+    /* ----------  IP geolocation (tries 3 providers) ---------- */
+    function getLocationFromIP() {
+        var providers = [
+            {
+                url: 'https://ipapi.co/json/',
+                parse: function(d) {
+                    return (d.latitude && d.longitude) ?
+                        { lat: d.latitude, lng: d.longitude, city: d.city || '', source: 'ipapi.co' } : null;
+                }
+            },
+            {
+                url: 'https://ipwho.is/',
+                parse: function(d) {
+                    return (d.success !== false && d.latitude) ?
+                        { lat: d.latitude, lng: d.longitude, city: d.city || '', source: 'ipwho.is' } : null;
+                }
+            },
+            {
+                url: 'https://freeipapi.com/api/json',
+                parse: function(d) {
+                    return d.latitude ?
+                        { lat: d.latitude, lng: d.longitude, city: d.cityName || '', source: 'freeipapi' } : null;
+                }
+            }
+        ];
+
+        var idx = 0;
+        function tryNext() {
+            if (idx >= providers.length) return Promise.resolve(null);
+            var p = providers[idx++];
+            return fetchWithTimeout(p.url, 6000)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var result = p.parse(data);
+                    if (result) {
+                        console.log('[Location] IP provider ' + result.source + ':', result.lat, result.lng, result.city);
+                        return result;
+                    }
+                    return tryNext();
+                })
+                .catch(function(e) {
+                    console.warn('[Location] IP provider ' + p.url + ' failed:', e.message);
+                    return tryNext();
+                });
+        }
+        return tryNext();
+    }
+
+    /* ----------  Main detection ---------- */
+    function detectUserLocation() {
+        var btn = document.getElementById('detect-location-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
+
+        // STEP 1: Always start with IP geolocation (fast, reliable on all devices)
+        getLocationFromIP().then(function(ipLoc) {
+
+            if (ipLoc) {
+                // Show IP location immediately so user sees something right away
+                setMapLocation(ipLoc.lat, ipLoc.lng, false);
+                regMap.setView([ipLoc.lat, ipLoc.lng], 13);
+                reverseGeocodeNominatim(ipLoc.lat, ipLoc.lng);
+
+                if (typeof showNotification === 'function') {
+                    showNotification('Location Detected',
+                        'Approximate location detected (' + ipLoc.city + '). Click the map to adjust.',
+                        'success');
+                }
+            }
+
+            // STEP 2: Also try browser GPS to get a more precise fix
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        var lat = position.coords.latitude;
+                        var lng = position.coords.longitude;
+                        var acc = position.coords.accuracy;
+                        console.log('[Location] Browser GPS:', lat, lng, 'accuracy:', acc, 'm');
+
+                        // Only use GPS if it's reasonably accurate (<10km)
+                        if (acc < 10000) {
+                            // If we also got an IP location, check they agree
+                            if (ipLoc) {
+                                var dist = haversineKm(lat, lng, ipLoc.lat, ipLoc.lng);
+                                console.log('[Location] GPS vs IP distance:', dist, 'km');
+                                // Only use GPS if it's within 500km of IP (sanity check)
+                                if (dist > 500) {
+                                    console.warn('[Location] GPS disagrees with IP by ' + dist + 'km — keeping IP location');
+                                    return;
+                                }
+                            }
+                            // GPS looks good — use it (more precise than IP)
+                            setMapLocation(lat, lng, false);
+                            var zoom = acc < 100 ? 17 : acc < 1000 ? 15 : 13;
+                            regMap.setView([lat, lng], zoom);
+                            reverseGeocodeNominatim(lat, lng);
+
+                            if (typeof showNotification === 'function') {
+                                showNotification('Location Updated',
+                                    'Precise location detected (accuracy: ~' + Math.round(acc) + 'm).',
+                                    'success');
+                            }
+                        }
+                    },
+                    function(err) {
+                        console.warn('[Location] Browser GPS error:', err.code, err.message);
+                        // If IP also failed, show a message
+                        if (!ipLoc && typeof showNotification === 'function') {
+                            showNotification('Location',
+                                'Could not auto-detect location. Please type your address or click the map.',
+                                'warning');
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } else if (!ipLoc) {
+                if (typeof showNotification === 'function') {
+                    showNotification('Location',
+                        'Location not available. Please type your address or click the map.',
+                        'warning');
+                }
+            }
+
+            btn.innerHTML = '<i class="fas fa-crosshairs"></i> Auto-Detect';
+            btn.disabled = false;
+        }).catch(function(e) {
+            console.error('[Location] Detection error:', e);
+            btn.innerHTML = '<i class="fas fa-crosshairs"></i> Auto-Detect';
+            btn.disabled = false;
+        });
+    }
+
+    /* ----------  Haversine (km) ---------- */
+    function haversineKm(lat1, lon1, lat2, lon2) {
+        var R = 6371;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLon = (lon2 - lon1) * Math.PI / 180;
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    /* ----------  Nominatim forward geocode ---------- */
+    function geocodeWithNominatim(address, city) {
+        var q = city ? address + ', ' + city : address;
+        return fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1', {
+            headers: { 'Accept-Language': 'en' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.length > 0) {
+                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            }
+            return null;
+        })
+        .catch(function(e) {
+            console.warn('Nominatim forward geocode failed:', e);
+            return null;
+        });
+    }
+
+    /* ----------  Nominatim reverse geocode ---------- */
+    function reverseGeocodeNominatim(lat, lng) {
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&addressdetails=1', {
+            headers: { 'Accept-Language': 'en' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.address) {
+                var a = data.address;
+                var parts = [];
+                if (a.house_number) parts.push(a.house_number);
+                if (a.road) parts.push(a.road);
+                if (a.neighbourhood || a.suburb) parts.push(a.neighbourhood || a.suburb);
+                if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+                if (a.state) parts.push(a.state);
+                if (a.postcode) parts.push(a.postcode);
+
+                if (parts.length) document.getElementById('address').value = parts.join(', ');
+                document.getElementById('city').value = a.city || a.town || a.village || a.county || '';
+            }
+        })
+        .catch(function(e) {
+            console.warn('Nominatim reverse geocode failed:', e);
+        });
+    }
+
+    /* ----------  Init on DOM ready ---------- */
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeRegistrationMap, 300);
+        });
+    } else {
+        setTimeout(initializeRegistrationMap, 300);
+    }
+</script>
+{% endblock %}
